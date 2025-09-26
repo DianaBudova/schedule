@@ -1,0 +1,232 @@
+<%- include('partials/header.ejs') %>
+<div id="main-page">
+<%if(locals.courses.length!==0){%>
+  <h1 class="course-text text-center">Today is <%=currentDay%> of the <%=currentWeek%> studying week</h1>
+  <small><%=currentDate%></small>
+<%if(currentWeek%2==0){%>
+<h2 class="course-text firstWeek">First week schedule (next week):</h2>
+<%} else{%>
+<h2 class="course-text firstWeek">First week schedule (current week):</h2>
+<%}%>
+<div class="schedule firstWeek">
+    <div class="courses course-text"><h3>Time:</h3></div>
+      <div class="courses course-text text-center"><h3>Monday</h3></div>
+      <div class="courses course-text text-center"><h3>Tuesday</h3></div>
+      <div class="courses course-text text-center"><h3>Wednesday</h3></div>
+      <div class="courses course-text text-center"><h3>Thursday</h3></div>
+      <div class="courses course-text text-center"><h3>Friday</h3></div>
+      <div class="courses course-text text-center"><h3>Saturday</h3></div>
+      <div class="courses course-text text-center"><h3>Sunday</h3></div>
+  <div class="course-time courses course-1"><p >8:00-9:35</p></div>
+  <div class="course-time courses course-2"><p >9:50-11:25</p></div>
+  <div class="course-time courses course-3"><p >11:40-13:15</p></div>
+  <div class="course-time courses course-4"><p>13:30-15:05</p></div>
+  <div class="course-time courses course-5"><p >15:20-16:55</p></div>
+  <div class="course-time courses course-6"><p >17:10-18:45</p></div>
+  <div class="course-time courses course-7"><p >19:00-20:35</p></div>
+  <%
+  let courseTime=['8:00-9:35', '9:50-11:25', '11:40-13:15',
+  '13:30-15:05', '15:20-16:55', '17:10-18:45', '19:00-20:35'];
+  let weekdays=['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
+  'Sunday']; 
+  
+  // Функція для визначення дня тижня для суботи
+  function getSaturdaySchedule(lastDigit) {
+  const monToFri = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
+
+  if (lastDigit > 0 && lastDigit <= 5) {
+    // розклад другого тижня,
+    return {
+      week: 2,
+      weekday: monToFri[lastDigit - 1]
+    };
+  } else {
+    //розклад першого тижня.
+    const index = (lastDigit === 0) ? 4 : (lastDigit - 6); // дає 0..3 або 4 для 0
+    return {
+      week: 1,
+      weekday: monToFri[index]
+    };
+  }
+}
+  
+  // Визначаємо який тип тижня зараз (1-й чи 2-й)
+  const isFirstWeekCurrent = (lastDigit % 2 === 1);
+  const currentWeekType = isFirstWeekCurrent ? 1 : 2;
+  const nextWeekType = isFirstWeekCurrent ? 2 : 1;
+  const nextWeek = lastDigit + 1;
+  // Визначаємо який номер тижня відповідає першому розкладу
+  const firstScheduleWeekNumber = isFirstWeekCurrent ? lastDigit : nextWeek;%>
+
+<%for(let i=0; i<7;i++){%>
+<% for(let l=0; l<7;l++){
+      const foundCourse = courses.find(course => 
+        course.week == 1 && 
+        course.time === courseTime[i] && 
+        course.weekday === weekdays[l]
+      );
+    %>
+
+<%if(weekdays[l] === 'Saturday'){%>
+<%
+        // Для суботи першого розкладу використовуємо номер тижня першого розкладу
+        const saturdayInfoFirst = getSaturdaySchedule(firstScheduleWeekNumber);
+        const foundSaturdayCourse = courses.find(course =>
+  course.week == saturdayInfoFirst.week &&
+  course.time === courseTime[i] &&
+  course.weekday === saturdayInfoFirst.weekday
+);
+        %>
+
+<%if(foundSaturdayCourse){%>
+<div class="courses">
+  <p class="course-text text-center scheduled-courses" data-id="<%= foundSaturdayCourse.id %>" data-name="<%= foundSaturdayCourse.name %>" data-type="<%= foundSaturdayCourse.type %>" data-cabinet="<%= foundSaturdayCourse.cabinet %>" data-professor="<%= foundSaturdayCourse.professor %>" data-weekday="<%= foundSaturdayCourse.weekday %>" data-week="<%= foundSaturdayCourse.week %>" data-time="<%= foundSaturdayCourse.time %>" data-classroom="<%= foundSaturdayCourse.classroom %>" data-students="<%= foundSaturdayCourse.students %>" data-marks="<%= foundSaturdayCourse.currentMarks %>" data-works="<%= foundSaturdayCourse.works %>" data-other="<%= foundSaturdayCourse.other %>">
+    <b><%= foundSaturdayCourse.name %></b><br />
+    <%= foundSaturdayCourse.type %><br />
+    <%= foundSaturdayCourse.cabinet %><br />
+    <%= foundSaturdayCourse.professor %>
+  </p>
+</div>
+<%}else{%>
+<div class="empty-slot courses">
+  <p></p>
+</div>
+<%}%>
+        
+      <%}else if(foundCourse){%>
+<div class="courses">
+  <p class="course-text text-center scheduled-courses" data-id="<%= foundCourse.id %>" data-name="<%= foundCourse.name %>" data-type="<%= foundCourse.type %>" data-cabinet="<%= foundCourse.cabinet %>" data-professor="<%= foundCourse.professor %>" data-weekday="<%= foundCourse.weekday %>" data-week="<%= foundCourse.week %>" data-time="<%= foundCourse.time %>" data-classroom="<%= foundCourse.classroom %>" data-students="<%= foundCourse.students %>" data-marks="<%= foundCourse.currentMarks %>" data-works="<%= foundCourse.works %>" data-other="<%= foundCourse.other %>">
+    <b><%= foundCourse.name %></b><br />
+    <%= foundCourse.type %><br />
+    <%= foundCourse.cabinet %><br />
+    <%= foundCourse.professor %>
+  </p>
+</div>
+<%}else{%>
+<div class="empty-slot courses">
+  <p></p>
+</div>
+<%}%>
+    <% } %>
+<% } %>
+</div>
+
+<%if(currentWeek%2==0){%>
+<h2 class="course-text secondWeek">Second week schedule (current week):</h2>
+<%} else{%>
+<h2 class="course-text secondWeek">Second week schedule (next week):</h2>
+<%}%>
+
+<div class="schedule">
+  <div class="courses course-text"><h3>Time:</h3></div>
+      <div class="courses course-text"><h3>Monday</h3></div>
+      <div class="courses course-text"><h3>Tuesday</h3></div>
+      <div class="courses course-text"><h3>Wednesday</h3></div>
+      <div class="courses course-text"><h3>Thursday</h3></div>
+      <div class="courses course-text"><h3>Friday</h3></div>
+      <div class="courses course-text"><h3>Saturday</h3></div>
+      <div class="courses course-text"><h3>Sunday</h3></div>
+  <div class="course-time courses course-1"><p >8:00-9:35</p></div>
+  <div class="course-time courses course-2"><p >9:50-11:25</p></div>
+  <div class="course-time courses course-3"><p >11:40-13:15</p></div>
+  <div class="course-time courses course-4"><p>13:30-15:05</p></div>
+  <div class="course-time courses course-5"><p >15:20-16:55</p></div>
+  <div class="course-time courses course-6"><p >17:10-18:45</p></div>
+  <div class="course-time courses course-7"><p >19:00-20:35</p></div>
+  
+  <%
+  // Визначаємо який номер тижня відповідає першому розкладу
+  const secondScheduleWeek = isFirstWeekCurrent ?  nextWeek: lastDigit;
+
+  const secondScheduleWeekNumber = getSaturdaySchedule(Number(secondScheduleWeek));
+  %>
+
+<%for(let i=0; i<7;i++){%>
+<% for(let l=0; l<7;l++){
+      const foundCourse = courses.find(course => 
+        course.week == 2 && 
+        course.time === courseTime[i] && 
+        course.weekday === weekdays[l]
+      );
+    %>
+
+<%if(weekdays[l] === 'Saturday'){%>
+<%
+        const foundSaturdayCourse = courses.find(course =>
+          course.week == secondScheduleWeekNumber.week &&
+          course.time === courseTime[i] &&
+          course.weekday === secondScheduleWeekNumber.weekday
+        );
+        %>
+
+<%if(foundSaturdayCourse){%>
+<div class="courses text-center">
+  <p class="course-text scheduled-courses" data-id="<%= foundSaturdayCourse.id %>" data-name="<%= foundSaturdayCourse.name %>" data-type="<%= foundSaturdayCourse.type %>" data-cabinet="<%= foundSaturdayCourse.cabinet %>" data-professor="<%= foundSaturdayCourse.professor %>" data-weekday="<%= foundSaturdayCourse.weekday %>" data-week="<%= foundSaturdayCourse.week %>" data-time="<%= foundSaturdayCourse.time %>" data-classroom="<%= foundSaturdayCourse.classroom %>" data-students="<%= foundSaturdayCourse.students %>" data-marks="<%= foundSaturdayCourse.currentMarks %>" data-works="<%= foundSaturdayCourse.works %>" data-other="<%= foundSaturdayCourse.other %>">
+    <b><%= foundSaturdayCourse.name %></b><br />
+    <%= foundSaturdayCourse.type %><br />
+    <%= foundSaturdayCourse.cabinet %><br />
+    <%= foundSaturdayCourse.professor %>
+  </p>
+</div>
+<%}else{%>
+<div class="empty-slot courses">
+  <p></p>
+</div>
+<%}%>
+        
+      <%}else if(foundCourse){%>
+<div class="courses text-center">
+  <p class="course-text scheduled-courses" data-id="<%= foundCourse.id %>" data-name="<%= foundCourse.name %>" data-type="<%= foundCourse.type %>" data-cabinet="<%= foundCourse.cabinet %>" data-professor="<%= foundCourse.professor %>" data-weekday="<%= foundCourse.weekday %>" data-week="<%= foundCourse.week %>" data-time="<%= foundCourse.time %>" data-classroom="<%= foundCourse.classroom %>" data-students="<%= foundCourse.students %>" data-marks="<%= foundCourse.currentMarks %>" data-works="<%= foundCourse.works %>" data-other="<%= foundCourse.other %>">
+    <b><%= foundCourse.name %></b><br />
+    <%= foundCourse.type %><br />
+    <%= foundCourse.cabinet %><br />
+    <%= foundCourse.professor %>
+  </p>
+</div>
+<%}else{%>
+<div class="empty-slot courses">
+  <p></p>
+</div>
+<%}%> 
+    <% } %>
+<% } %>
+</div>
+
+<%} else{%>
+<h2 class="course-text firstWeek text-center">You don't have any schedule yet</h2>
+<%}%> 
+</div>
+<dialog display="hidden" id="dialog-info">
+  <form id="dialog-info-form" class="text-center">
+    <b><output id="name"></output></b>
+  <output id="type"></output>
+  <output id="cabinet"></output>
+  <output id="professor"></output>
+  <div>
+  <i><p class="d-inline">Weekday: </p></i>
+  <output id="weekday"></output></div>
+  <div>
+  <i><p class="d-inline">Week: </p></i>
+  <output id="week"></output></div>
+  <div>
+  <i><p class="d-inline">Time: </p></i>
+  <output id="time"></output></div>
+  <div>
+  <i><p class="d-inline">Classroom code or link: </p></i>
+  <output id="classroom"></output></div>
+  <div>
+  <i><p class="d-inline">Students who attend: </p></i>
+  <output id="students"></output></div>
+  <div>
+  <i><p class="d-inline">Current Marks: </p></i>
+  <output id="currentMarks"></output></div>
+  <div>
+  <i><p class="d-inline">General works and marks:</p></i>
+  <output id="works"></output></div>
+  <div>
+  <i><p class="d-inline">Other info: </p></i>
+  <output id="other"></output></div>
+  <button id="dialog-info-close" class="submit-button">Close</button>
+  </form>
+  </dialog>
+<%- include('partials/footer.ejs') %>

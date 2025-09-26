@@ -1,0 +1,201 @@
+.schedule{
+    display:grid;
+    grid-template-columns: 0.5fr repeat(6, 1fr) 0.05fr;
+    grid-auto-rows:auto;
+    border: solid black 0px;
+}
+
+.course-1{
+grid-column-start: 1;
+grid-column-end: 1;
+grid-row-start: 2;
+grid-row-end: 2;
+}
+.course-2{
+grid-column-start: 1;
+grid-column-end: 1;
+grid-row-start: 3;
+grid-row-end: 3;
+}
+.course-3{
+grid-column-start: 1;
+grid-column-end: 1;
+grid-row-start: 4;
+grid-row-end: 4;
+}
+.course-4{
+grid-column-start: 1;
+grid-column-end: 1;
+grid-row-start: 5;
+grid-row-end: 5;
+}
+.course-5{
+grid-column-start: 1;
+grid-column-end: 1;
+grid-row-start: 6;
+grid-row-end: 6;
+}
+.course-6{
+grid-column-start: 1;
+grid-column-end: 1;
+grid-row-start: 7;
+grid-row-end: 7;
+}
+.course-7{
+grid-column-start: 1;
+grid-column-end: 1;
+grid-row-start: 8;
+grid-row-end: 8;
+}
+
+.courses{
+    border: solid black 0.5px
+}
+
+#deleteDialog{
+    border: solid gray 2px;
+    border-radius: 2%;
+    color:rgb(57, 57, 57);
+    background-color: rgb(235, 237, 238);
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  max-width: 800px
+}
+
+#main-page{
+    margin-left: 4%;
+    margin-right:4%;
+    margin-bottom:2%
+}
+
+.course-text{
+    font-family: "Manrope", sans-serif;
+}
+
+.secondWeek{
+    margin-top: 2%;
+}
+
+h1.course-text{
+    margin-top: 1%;
+    margin-bottom: 1%;
+}
+
+#dialog-info {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border: none;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+}
+
+#dialog-info-form {
+    margin: 0;
+    border: solid gray 2px;
+    border-radius: 2%;
+    color: rgb(57, 57, 57);
+    background-color: rgb(235, 237, 238);
+    display: flex;
+    flex-flow: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 35%;
+    width: fit-content;
+    padding: 20px;
+}
+
+#create-form{
+    display: flex;
+    flex-direction: column;
+    margin-left: 12%;
+    margin-bottom: 12%;
+}
+
+.header-create{
+    margin-left: 5%;
+}
+
+.create-page{
+    display: grid;
+    grid-template-columns: 4fr 6fr;
+}
+
+.edit-buttons{
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-evenly;
+}
+
+.list-courses{
+    margin-left: 20%;
+}
+
+b{
+    font-family: "Manrope", sans-serif;
+    font-weight: 650;
+}
+
+.submit-button{
+    border-radius: 8%;
+    border: solid 0px;
+    height: 40px;
+    min-width: fit-content;
+    width: 80px;
+    background-color: rgb(36, 116, 245);
+    color: white;
+    margin-top: 5px;
+}
+
+ul>li.course{
+    margin-bottom: 5%;
+}
+
+form#create-form>b>label{
+    margin-top: 1em;
+}
+
+.cancel-btn{
+    border:solid 1px rgb(190, 190, 190);
+    background-color: rgb(172, 184, 189);
+    border-radius: 8%;
+}
+
+@media print{
+    p{
+        font-size: 10px;
+    }
+
+    h1{
+        font-size: 21px;
+    }
+
+    h2{
+        font-size: 18px;
+    }
+
+    h3{
+        font-size: 15px;
+    }
+
+    div.container{
+        display: none;
+    }
+
+    div.schedule{
+        break-inside: avoid;
+    }
+
+    h1.course-text{
+        display: none;
+    }
+
+    div.schedule.firstWeek{
+        page-break-after: always;
+    }
+}

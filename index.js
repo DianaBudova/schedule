@@ -110,6 +110,24 @@ function ensureAuth(req, res) {
   return true;
 }
 
+// use this in index.js (after твого auth middleware, який встановлює req.user)
+function requireAuth(req, res, next) {
+  if (req.user && req.user.id) {
+    return next();
+  }
+
+  // Якщо очікуємо JSON (API): повертаємо 401 з JSON
+  const acceptsJson = req.headers['accept'] && req.headers['accept'].includes('application/json');
+  const isXhr = req.xhr || req.headers['x-requested-with'] === 'XMLHttpRequest';
+
+  if (acceptsJson || isXhr || req.path.startsWith('/api/')) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  // Інакше — редірект на сторінку логіну
+  return res.redirect('/auth');
+}
+
 app.get("/auth", (req, res) => {
   // Показує сторінку логіна/реєстрації
   res.render("auth", {
@@ -118,12 +136,8 @@ app.get("/auth", (req, res) => {
   });
 });
 
-app.get("/", async (req, res) => {
+app.get("/", requireAuth, async (req, res) => {
   try {
-    // Для публічного перегляду можеш дозволити неавторизованим користувачам,
-    // але для роботи з індивідуальними schedules — обов'язкова авторизація
-    if (!ensureAuth(req, res)) return;
-
     const userId = req.user.id;
     const schedule = await getSchedule(userId);
     const courses = schedule?.courses ?? [];

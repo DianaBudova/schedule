@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>Supabase Auth Demo</title>
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+
+    const SUPABASE_URL = '<%= supabaseUrl %>';
+    const SUPABASE_KEY = '<%= supabaseAnonKey %>';
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    async function registerUser() {
+      const email = document.getElementById('reg-email').value;
+      const password = document.getElementById('reg-password').value;
+
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error) {
+        alert('Помилка реєстрації: ' + error.message);
+        return;
+      }
+      alert('Користувач зареєстрований! Перевірте email для підтвердження.');
+    }
+
+    async function loginUser() {
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        alert('Помилка входу: ' + error.message);
+        return;
+      }
+
+      alert('Вхід успішний! Ваш user_id: ' + data.user.id);
+      document.getElementById('user-info').innerText = 'Logged in user_id: ' + data.user.id;
+
+      // Приклад: надсилання user_id на сервер
+      fetch('/set-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ user_id: data.user.id })
+      });
+    }
+
+    async function logoutUser() {
+      await supabase.auth.signOut();
+      document.getElementById('user-info').innerText = 'Ви вийшли з облікового запису';
+    }
+
+    window.registerUser = registerUser;
+    window.loginUser = loginUser;
+    window.logoutUser = logoutUser;
+  </script>
+</head>
+<body>
+  <h1>Supabase Auth Demo</h1>
+
+  <h2>Реєстрація</h2>
+  <input type="email" id="reg-email" placeholder="Email">
+  <input type="password" id="reg-password" placeholder="Password">
+  <button onclick="registerUser()">Зареєструватися</button>
+
+  <h2>Вхід</h2>
+  <input type="email" id="login-email" placeholder="Email">
+  <input type="password" id="login-password" placeholder="Password">
+  <button onclick="loginUser()">Увійти</button>
+
+  <h2>Вихід</h2>
+  <button onclick="logoutUser()">Вийти</button>
+
+  <p id="user-info">Ще не увійшли</p>
+</body>
+</html>

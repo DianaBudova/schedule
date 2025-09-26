@@ -7,47 +7,107 @@
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
     const SUPABASE_URL = '<%= supabaseUrl %>';
-    const SUPABASE_KEY = '<%= supabaseAnonKey %>';
-    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+    const SUPABASE_ANON_KEY = '<%= supabaseAnonKey %>';
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // При завантаженні сторінки — спробуємо взяти існуючу сесію
+    window.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        const session = data?.session ?? null;
+        const user = session?.user ?? null;
+        if (user) {
+          const token = session.access_token;
+          localStorage.setItem('sb_access_token', token);
+          document.getElementById('user-info').innerText = `Logged in user_id: ${user.id}`;
+        } else {
+          document.getElementById('user-info').innerText = 'Ще не увійшли';
+        }
+      } catch (err) {
+        console.error('Error getting session on load:', err);
+      }
+    });
 
     async function registerUser() {
       const email = document.getElementById('reg-email').value;
       const password = document.getElementById('reg-password').value;
 
-      const { data, error } = await supabase.auth.signUp({ email, password });
-      if (error) {
-        alert('Помилка реєстрації: ' + error.message);
-        return;
+      try {
+        const { data, error } = await supabase.auth.signUp({ email, password });
+        if (error) {
+          alert('Помилка реєстрації: ' + error.message);
+          return;
+        }
+        // data.user або data
+        const user = data?.user ?? data;
+        alert('Користувач зареєстрований! Перевірте email для підтвердження (якщо ввімкнено).');
+        console.log('signUp result:', data);
+        if (user) document.getElementById('user-info').innerText = `Registered user_id: ${user.id}`;
+      } catch (err) {
+        console.error('registerUser error:', err);
+        alert('Помилка реєстрації (network): ' + err.message);
       }
-      alert('Користувач зареєстрований! Перевірте email для підтвердження.');
     }
 
     async function loginUser() {
       const email = document.getElementById('login-email').value;
       const password = document.getElementById('login-password').value;
 
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) {
-        alert('Помилка входу: ' + error.message);
-        return;
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) {
+          alert('Помилка входу: ' + error.message);
+          return;
+        }
+        const session = data?.session ?? null;
+        const user = data?.user ?? session?.user ?? null;
+
+        if (!session || !user) {
+          alert('Вхід пройшов, але сесія не отримана. Перевірте налаштування Supabase.');
+          console.log('login response:', data);
+          return;
+        }
+
+        // Зберігаємо токен локально (щоб надсилати його серверу)
+        const token = session.access_token;
+        localStorage.setItem('sb_access_token', token);
+
+        alert('Вхід успішний! Ваш user_id: ' + user.id);
+        document.getElementById('user-info').innerText = 'Logged in user_id: ' + user.id;
+
+        // Приклад: виклик сервера з Authorization заголовком
+        // (тут показано як отримати schedule; змінити URL під свій)
+        try {
+          const res = await fetch('/api/schedule', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          if (res.ok) {
+            const schedule = await res.json();
+            console.log('Schedule from server:', schedule);
+          } else {
+            console.warn('Server returned', res.status);
+          }
+        } catch (err) {
+          console.error('Error fetching /api/schedule:', err);
+        }
+      } catch (err) {
+        console.error('loginUser error:', err);
+        alert('Помилка входу (network): ' + err.message);
       }
-
-      alert('Вхід успішний! Ваш user_id: ' + data.user.id);
-      document.getElementById('user-info').innerText = 'Logged in user_id: ' + data.user.id;
-
-      // Приклад: надсилання user_id на сервер
-      fetch('/set-user', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ user_id: data.user.id })
-      });
     }
 
     async function logoutUser() {
-      await supabase.auth.signOut();
-      document.getElementById('user-info').innerText = 'Ви вийшли з облікового запису';
+      try {
+        await supabase.auth.signOut();
+        localStorage.removeItem('sb_access_token');
+        document.getElementById('user-info').innerText = 'Ви вийшли з облікового запису';
+      } catch (err) {
+        console.error('logout error:', err);
+        alert('Помилка виходу: ' + err.message);
+      }
     }
 
     window.registerUser = registerUser;

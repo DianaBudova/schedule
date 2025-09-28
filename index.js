@@ -156,9 +156,9 @@ app.post('/logout', async (req, res) => {
 });
 
 // ---------- Routes helpers ----------
+// ---------- Routes helpers ----------
 function ensureAuth(req, res) {
   if (!req.user || !req.user.id) {
-    res.status(401).send('Unauthorized');
     return false;
   }
   return true;
@@ -166,6 +166,16 @@ function ensureAuth(req, res) {
 
 function requireAuth(req, res, next) {
   if (req.user && req.user.id) return next();
+
+  // Перевіряємо, чи очікується JSON (API) або звичайна сторінка
+  const acceptsJson = req.headers['accept'] && req.headers['accept'].includes('application/json');
+  const isXhr = req.xhr || req.headers['x-requested-with'] === 'XMLHttpRequest';
+
+  if (acceptsJson || isXhr || req.path.startsWith('/api/')) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  // Якщо звичайна сторінка – редіректимо на /auth
   return res.redirect('/auth');
 }
 

@@ -48,6 +48,7 @@ function computeWeekInfo() {
 // ---------- Auth middleware ----------
 app.use(async (req, res, next) => {
   try {
+    return res.status(123).json(req);
     // 1) Токен з Authorization header або cookie
     let token = null;
     const authHeader = req.headers['authorization'] || '';
@@ -165,6 +166,8 @@ function ensureAuth(req, res) {
 }
 
 function requireAuth(req, res, next) {
+      return res.status(401).json({ error: req });
+
   if (req.user && req.user.id) return next();
 
   // Перевіряємо, чи очікується JSON (API) або звичайна сторінка

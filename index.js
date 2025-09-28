@@ -3,7 +3,6 @@ import express from "express";
 import bodyParser from "body-parser";
 import path from "path";
 import { fileURLToPath } from "url";
-import cookieParser from "cookie-parser";
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 import supabase from './supabaseClient.js'; // frontend-like client (anon key)
@@ -42,7 +41,6 @@ app.set("view engine", "ejs");
 app.use(express.static(path.join(__dirname, "public")));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
-app.use(cookieParser()); // <-- додано
 
 // ---------- Auth middleware (враховує header або cookie) ----------
 app.use(async (req, res, next) => {
@@ -169,6 +167,7 @@ app.post('/logout', (req, res) => {
 
 // ---------- Routes (захищені) ----------
 function ensureAuth(req, res) {
+  console.log(req);
   if (!req.user || !req.user.id) {
     res.status(401).send('Unauthorized');
     return false;

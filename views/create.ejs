@@ -1,69 +1,75 @@
-<%- include('partials/header.ejs') %>
-<div class="header-create">
-<h1>Create your schedule!</h1>
-<p>to delete course you need to double click the course on the list*</p></div>
-<div class="create-page">
-<form method="post" id="create-form">
-    <input name="id" value="" type="hidden" id="courseId">
-    <b><label for="courseName">Enter course name: </label></b>
-    <textarea required name="courseName" id="courseName"></textarea>
-    <b><label for="type">Enter course type: </label></b>
-    <div><input required type="radio" value="Lab" name="type" id="Lab"> <label>Lab</label><br/>
-    <input required type="radio" value="Lecture" name="type" id="Lecture"><label>Lecture</label><br/></div>
-    <b><label for="cabinet">Enter cabinet: </label></b>
-    <textarea required name="cabinet" id="cabinet"></textarea>
-    <b><label for="professor">Enter name of the professor: </label></b>
-    <textarea required name="professor" id="professor"></textarea>
-    <b><label for="weekday">Enter weekday: </label></b>
-    <div>
-    <input required type="radio" value="Monday" name="weekday" id="Monday"> <label>Monday</label><br/>
-    <input required type="radio" value="Tuesday" name="weekday" id="Tuesday"><label>Tuesday</label><br/>
-    <input required type="radio" value="Wednesday" name="weekday" id="Wednesday"><label>Wednesday</label><br/>
-    <input required type="radio" value="Thursday" name="weekday" id="Thursday"><label>Thursday</label><br/>
-    <input required type="radio" value="Friday" name="weekday" id="Friday"><label>Friday</label><br/></div>
-    <b><label for="week">Enter week: </label></b>
-    <div><input required name="week" value="1" type="radio" id="weekFirst"><label>First Week</label><br/>
-    <input required name="week" value="2" type="radio" id="weekSecond"><label>Second Week</label><br/></div>
-    <b><label for="time">Enter time: </label></b>
-    <div><input type="radio" name="time" required value="8:00-9:35" id="time1"><label>8:00-9:35</label><br/>
-    <input type="radio" name="time" required value="9:50-11:25" id="time2"><label>9:50-11:25</label><br/>
-    <input type="radio" name="time" required value="11:40-13:15" id="time3"><label>11:40-13:15</label><br/>
-    <input type="radio" name="time" required value="13:30-15:05" id="time4"><label>13:30-15:05</label><br/>
-    <input type="radio" name="time" required value="15:20-16:55" id="time5"><label>15:20-16:55</label><br/>
-    <input type="radio" name="time" required value="17:10-18:45" id="time6"><label>17:10-18:45</label><br/>
-    <input type="radio" name="time" required value="19:00-20:35" id="time7"><label>19:00-20:35</label><br/></div>
-    <b><label>Enter additional information: </label></b>
-    <b><label for="classroom">Classroom name and/or link and/or code:</label></b>
-    <textarea name="classroom" id="classroom"></textarea>
-    <b><label for="students">Students who attend:</label></b>
-    <textarea name="students" id="students"></textarea>
-    <b><label for="currentMarks">Current Marks:</label></b>
-    <textarea name="currentMarks" id="currentMarks"></textarea>
-    <b><label for="works">Amount of works and possible marks:</label></b>
-    <textarea name="works" id="works"></textarea>
-    <b><label for="other">Other:</label></b>
-    <textarea name="other" id="other"></textarea>
-    <div class="edit-buttons">
-    <button type="submit" formaction="/create" class="submit-button add-btn">Add</button>
-  <button type="submit" formaction="/update" class="submit-button update-btn">Update</button></div>
-</form>
-<div class="list-courses">
-<ul class="list-unstyled">
-<% courses.forEach(course => { %>
- <li class="course course-text" data-id="<%= course.id %>" data-name="<%=course.name%>" data-type="<%= course.type %>" data-cabinet="<%= course.cabinet %>" data-professor="<%= course.professor %>" data-weekday="<%= course.weekday %>" data-week="<%= course.week %>" data-time="<%= course.time %>" data-classroom="<%= course.classroom %>" data-students="<%= course.students %>" data-marks="<%= course.currentMarks %>" data-works="<%= course.works %>" data-other="<%= course.other %>">
-    <b><%= course.name %>: </b><br/>
-<%=course.type%>, <%=  course.cabinet %>, <%= course.professor %>, <%= course.time %>, <%= course.weekday%>, <%= course.week%> week</li>
-<% }) %></ul></div>
-</div>
-<dialog id="deleteDialog" display="hidden">
-    <form method="POST" action="/delete">
-        <h3 id="modalMessage">Are you sure you want to delete this post?</h3>
-        <input type="hidden" id="id-field-delete" name="idDelete" required>
-        <button type="submit" class="submit-button">Yes, delete it!</button>
-        <button type="button" id="cancelDelete" class="cancel-btn">Cancel</button>
-    </form>
-    </dialog>
-    <%if(locals.foundExistingCourse){%>
-    <script>alert("<%=foundExistingCourse%>");</script>
-    <%}%>
-<%- include('partials/footer.ejs') %>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Edit Schedule</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 2rem; }
+    input, select { display: block; margin: 0.5rem 0; padding: 0.5rem; width: 300px; }
+    button { padding: 0.5rem 1rem; }
+    .message { color: red; }
+    table { border-collapse: collapse; margin-top: 1rem; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 0.5rem; }
+    th { background: #f2f2f2; }
+    form.inline { display: inline; }
+  </style>
+</head>
+<body>
+  <h1>Edit Schedule</h1>
+  <% if(foundExistingCourse) { %>
+    <p class="message"><%= foundExistingCourse %></p>
+  <% } %>
+
+  <form action="/create" method="post">
+    <input type="text" name="courseName" placeholder="Course Name" required />
+    <input type="text" name="type" placeholder="Type" />
+    <input type="text" name="cabinet" placeholder="Cabinet" />
+    <input type="text" name="professor" placeholder="Professor" />
+    <input type="text" name="weekday" placeholder="Weekday" />
+    <input type="text" name="week" placeholder="Week" />
+    <input type="text" name="time" placeholder="Time" />
+    <input type="text" name="classroom" placeholder="Classroom" />
+    <input type="text" name="students" placeholder="Students" />
+    <input type="text" name="currentMarks" placeholder="Current Marks" />
+    <input type="text" name="works" placeholder="Works" />
+    <input type="text" name="other" placeholder="Other" />
+    <button type="submit">Add Course</button>
+  </form>
+
+  <h2>Current Courses</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Course</th>
+        <th>Type</th>
+        <th>Week</th>
+        <th>Day</th>
+        <th>Time</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if(courses.length === 0) { %>
+        <tr><td colspan="6">No courses yet</td></tr>
+      <% } %>
+      <% courses.forEach(c => { %>
+        <tr>
+          <td><%= c.name %></td>
+          <td><%= c.type %></td>
+          <td><%= c.week %></td>
+          <td><%= c.weekday %></td>
+          <td><%= c.time %></td>
+          <td>
+            <form class="inline" action="/delete" method="post">
+              <input type="hidden" name="idDelete" value="<%= c.id %>" />
+              <button type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+
+  <p><a href="/">Back to Schedule</a></p>
+</body>
+</html>

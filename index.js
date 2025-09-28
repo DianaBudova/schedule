@@ -18,7 +18,7 @@ const port = process.env.PORT || 3000;
 
 // ---------- Supabase server client (service role) ----------
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || process.env.SUPABASE_KEY;
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   console.warn("Warning: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set. Auth middleware will not work properly.");
 }
@@ -194,7 +194,7 @@ function requireAuth(req, res, next) {
 app.get("/auth", (req, res) => {
   res.render("auth", {
     supabaseUrl: process.env.SUPABASE_URL,
-    supabaseAnonKey: process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY
+    supabaseAnonKey: process.env.SUPABASE_KEY || process.env.SUPABASE_KEY
   });
 });
 

@@ -165,6 +165,16 @@ function ensureAuth(req, res) {
 }
 
 function requireAuth(req, res, next) {
+  app.use((req, res, next) => {
+  console.log("REQ METHOD:", req.method);
+  console.log("REQ URL:", req.url);
+  console.log("REQ HEADERS:", req.headers);
+  console.log("REQ COOKIES:", req.cookies);   // якщо використовуєш cookie-parser
+  console.log("REQ BODY:", req.body);
+  console.log("REQ USER:", req.user);        // тут твоя авторизація через middleware
+  next();
+});
+
   if (req.user && req.user.id) return next();
 
   // Перевіряємо, чи очікується JSON (API) або звичайна сторінка

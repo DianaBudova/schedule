@@ -1,69 +1,81 @@
 // scheduleRepo.js
-import supabaseServer from './supabaseServer.js';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error("SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set.");
+}
+
+const supabaseServer = createSupabaseClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 /**
- * Очікується таблиця public.schedules з колонками:
- * - user_id text PRIMARY KEY
- * - courses jsonb
- * - created_at timestamptz default now()
- *
- * SQL для створення (покладений у README або в SQL editor Supabase):
- * 
- * create table public.schedules (
- *   user_id text primary key,
- *   courses jsonb default '[]'::jsonb,
- *   created_at timestamptz default now()
- * );
+ * Отримати розклад користувача
+ * @param {string} userId - uuid користувача
+ * @returns {Promise<{courses: Array}>}
  */
-
 export async function getSchedule(userId) {
-  if (!userId) return { user_id: null, courses: [] };
-  const { data, error } = await supabaseServer
-    .from('schedules')
-    .select('*')
-    .eq('user_id', String(userId))
-    .limit(1)
-    .single();
-  if (error) {
-    // Якщо рядка нема — повертаємо пустий об'єкт (не кидаємо помилку)
-    if (error.code === 'PGRST116' || /No rows/.test(error.message || '')) {
-      return { user_id: userId, courses: [] };
+  try {
+    const { data, error } = await supabaseServer
+      .from('schedules')
+      .select('courses')
+      .eq('user_id', userId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      console.error("getSchedule error:", error);
+      return { courses: [] };
     }
-    throw error;
+
+    return data || { courses: [] };
+  } catch (err) {
+    console.error("getSchedule exception:", err);
+    return { courses: [] };
   }
-  // data.courses може бути null -> зробимо масив
-  return {
-    user_id: data.user_id,
-    courses: data.courses ?? []
-  };
 }
 
-export async function saveSchedule(userId, scheduleObj) {
-  if (!userId) throw new Error('Missing userId');
-  // scheduleObj має поле courses (масив)
-  const payload = {
-    user_id: String(userId),
-    courses: scheduleObj.courses ?? []
-  };
+/**
+ * Зберегти розклад користувача
+ * @param {string} userId - uuid користувача
+ * @param {{courses: Array}} schedule - об'єкт розкладу
+ */
+export async function saveSchedule(userId, schedule) {
+  try {
+    // Upsert: якщо є рядок з user_id — оновлюємо, інакше вставляємо
+    const { data, error } = await supabaseServer
+      .from('schedules')
+      .upsert(
+        { user_id: userId, courses: schedule.courses },
+        { onConflict: 'user_id' }
+      );
 
-  // upsert по PK user_id
-  const { data, error } = await supabaseServer
-    .from('schedules')
-    .upsert(payload, { onConflict: 'user_id' })
-    .select()
-    .single();
+    if (error) {
+      console.error("saveSchedule error:", error);
+    }
 
-  if (error) throw error;
-  return data;
+    return data;
+  } catch (err) {
+    console.error("saveSchedule exception:", err);
+  }
 }
 
+/**
+ * Видалити розклад користувача
+ * @param {string} userId
+ */
 export async function deleteSchedule(userId) {
-  if (!userId) throw new Error('Missing userId');
-  const { data, error } = await supabaseServer
-    .from('schedules')
-    .delete()
-    .eq('user_id', String(userId));
+  try {
+    const { data, error } = await supabaseServer
+      .from('schedules')
+      .delete()
+      .eq('user_id', userId);
 
-  if (error) throw error;
-  return data;
+    if (error) {
+      console.error("deleteSchedule error:", error);
+    }
+
+    return data;
+  } catch (err) {
+    console.error("deleteSchedule exception:", err);
+  }
 }

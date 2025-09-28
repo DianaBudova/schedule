@@ -1,29 +1,21 @@
 // index.js
+import 'dotenv/config';
 import express from "express";
 import bodyParser from "body-parser";
+import cookieParser from "cookie-parser";
 import path from "path";
 import { fileURLToPath } from "url";
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-
-import supabase from './supabaseClient.js'; // frontend-like client (anon key)
+import supabase from './supabaseClient.js'; // frontend-like для signup/login
+import supabaseServer from './supabaseServer.js'; // server client (service role)
 import { getSchedule, saveSchedule, deleteSchedule } from "./scheduleRepo.js";
 
-// ---------- Настроювання сервера ----------
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// ---------- Supabase server client (service role) ----------
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || process.env.SUPABASE_KEY;
-if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  console.warn("Warning: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set. Auth middleware will not work properly.");
-}
-const supabaseServer = createSupabaseClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-// ----- Time / week helpers -----
+// ----- time helpers -----
 const startingDate = "2025-09-01";
 const weekdays = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const startingDay = new Date(startingDate);
@@ -36,25 +28,27 @@ function computeWeekInfo() {
 }
 
 // ----- Express setup -----
-app.set("views", path.join(__dirname, "views")); // ejs в папці views
+app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "ejs");
 app.use(express.static(path.join(__dirname, "public")));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
+// IMPORTANT: cookie parser to read access_token cookie
+app.use(cookieParser());
 
-// ---------- Auth middleware (враховує header або cookie) ----------
+// ---------- Auth middleware ----------
 app.use(async (req, res, next) => {
   try {
-    // 1) перевіряємо Authorization header
-    const authHeader = req.headers['authorization'] || '';
+    const authHeader = (req.headers['authorization'] || '').toString();
     let token = null;
+
     if (authHeader.startsWith('Bearer ')) {
       token = authHeader.split(' ')[1];
     }
 
-    // 2) якщо header відсутній — дивимось cookie (назва 'access_token')
-    if (!token && req.cookies && req.cookies.access_token) {
-      token = req.cookies.access_token;
+    // If no header token — try cookie
+    if (!token && req.cookies) {
+      token = req.cookies['access_token'] || null;
     }
 
     if (!token) {
@@ -62,15 +56,12 @@ app.use(async (req, res, next) => {
       return next();
     }
 
-    // Викликаємо getUser з access token
-    // supabaseServer.auth.getUser(token) повертає { data, error }
-    const response = await supabaseServer.auth.getUser(token);
-    const { data, error } = response;
+    // Verify token via server client
+    const { data, error } = await supabaseServer.auth.getUser(token);
     if (error) {
-      // Якщо токен прострочений або неправильний — видаляємо cookie (чистимо)
-      console.warn("supabase auth.getUser returned error:", error.message || error);
-      // очистити cookie (необов'язково)
-      res.clearCookie('access_token');
+      console.warn('supabaseServer.auth.getUser error:', error.message ?? error);
+      // clear cookie if present
+      try { res.clearCookie('access_token'); } catch(e) {}
       req.user = null;
       return next();
     }
@@ -82,21 +73,28 @@ app.use(async (req, res, next) => {
       req.user = null;
     }
 
-    next();
+    return next();
   } catch (err) {
-    console.error("Auth middleware unexpected error:", err);
-    // у випадку internal error — не авторизуємо
+    console.error('Auth middleware unexpected error:', err);
     req.user = null;
-    next();
+    return next();
   }
 });
 
 // ---------- Auth routes ----------
+app.get('/auth', (req, res) => {
+  res.render('auth', {
+    supabaseUrl: process.env.SUPABASE_URL,
+    supabaseAnonKey: process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY
+  });
+});
+
+// Register (using anon client)
 app.post('/register', async (req, res) => {
   try {
     const { email, password } = req.body;
     const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) return res.status(400).json({ error: error.message || error });
+    if (error) return res.status(400).json({ error: error.message ?? error });
     return res.json({ user: data.user ?? data });
   } catch (err) {
     console.error("POST /register error:", err);
@@ -104,44 +102,40 @@ app.post('/register', async (req, res) => {
   }
 });
 
+// Login (using anon client) — sets httpOnly cookie with access_token
 app.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return res.status(400).json({ error: error.message || error });
+    if (error) return res.status(400).json({ error: error.message ?? error });
 
-    // data.session.access_token — зберігаємо в secure, httpOnly cookie
     const accessToken = data?.session?.access_token;
     const refreshToken = data?.session?.refresh_token;
-    const expiresAt = data?.session?.expires_at; // unix timestamp seconds (може бути undefined)
+    const expiresAt = data?.session?.expires_at; // unix seconds
 
     if (!accessToken) {
-      // несподівано — теж повертаємо сесію, але без cookie
-      return res.json({ session: data.session, user: data.user });
+      return res.status(500).json({ error: 'No access token returned by Supabase' });
     }
 
-    // Обчислимо maxAge для cookie, якщо expires_at заданий
-    let maxAge = undefined;
-    if (expiresAt && Number(expiresAt) > 0) {
+    // compute maxAge in ms if expiresAt present
+    let maxAgeMs;
+    if (typeof expiresAt !== 'undefined' && Number(expiresAt) > 0) {
       const ms = (Number(expiresAt) * 1000) - Date.now();
-      if (ms > 0) maxAge = ms;
+      if (ms > 0) maxAgeMs = ms;
     }
 
-    // Налаштування cookie
     res.cookie('access_token', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge // якщо undefined — браузер буде сесійним cookie
+      maxAge: maxAgeMs
     });
 
-    // опційно: зберегти refresh token (якщо хочеш робити refresh на сервері)
     if (refreshToken) {
       res.cookie('refresh_token', refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        // не ставимо maxAge тут окремо
+        sameSite: 'lax'
       });
     }
 
@@ -152,12 +146,10 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// Logout очистить cookie
 app.post('/logout', (req, res) => {
   try {
     res.clearCookie('access_token');
     res.clearCookie('refresh_token');
-    // Якщо хочеш — також викликати supabase.auth.signOut() з anon client
     return res.json({ ok: true });
   } catch (err) {
     console.error("POST /logout error:", err);
@@ -165,9 +157,8 @@ app.post('/logout', (req, res) => {
   }
 });
 
-// ---------- Routes (захищені) ----------
+// ---------- Helpers ----------
 function ensureAuth(req, res) {
-  console.log(req);
   if (!req.user || !req.user.id) {
     res.status(401).send('Unauthorized');
     return false;
@@ -176,9 +167,7 @@ function ensureAuth(req, res) {
 }
 
 function requireAuth(req, res, next) {
-  if (req.user && req.user.id) {
-    return next();
-  }
+  if (req.user && req.user.id) return next();
 
   const acceptsJson = req.headers['accept'] && req.headers['accept'].includes('application/json');
   const isXhr = req.xhr || req.headers['x-requested-with'] === 'XMLHttpRequest';
@@ -190,21 +179,15 @@ function requireAuth(req, res, next) {
   return res.redirect('/auth');
 }
 
-app.get("/auth", (req, res) => {
-  res.render("auth", {
-    supabaseUrl: process.env.SUPABASE_URL,
-    supabaseAnonKey: process.env.SUPABASE_KEY || process.env.SUPABASE_KEY
-  });
-});
-
-app.get("/", requireAuth, async (req, res) => {
+// ---------- App routes ----------
+app.get('/', requireAuth, async (req, res) => {
   try {
     const userId = req.user.id;
     const schedule = await getSchedule(userId);
     const courses = schedule?.courses ?? [];
     const { currentDate, currentWeek, currentDay, lastDigit } = computeWeekInfo();
 
-    res.render("index.ejs", {
+    res.render('index.ejs', {
       courses,
       currentWeek,
       lastDigit,
@@ -218,20 +201,20 @@ app.get("/", requireAuth, async (req, res) => {
   }
 });
 
-app.get("/edit", async (req, res) => {
+app.get('/edit', async (req, res) => {
   try {
     if (!ensureAuth(req, res)) return;
     const userId = req.user.id;
     const schedule = await getSchedule(userId);
     const courses = schedule?.courses ?? [];
-    res.render("create.ejs", { courses });
+    res.render('create.ejs', { courses });
   } catch (err) {
     console.error("Error on GET /edit :", err);
     res.status(500).send("Internal Server Error");
   }
 });
 
-// create / update / delete — як у тебе було
+// Create / Update / Delete similar to your previous code — use ensureAuth
 app.post("/create", async (req, res) => {
   try {
     if (!ensureAuth(req, res)) return;
@@ -346,7 +329,9 @@ app.get("/api/schedule", async (req, res) => {
   }
 });
 
-// ---------- Start ----------
+// health
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
+
 app.listen(port, () => {
   console.log(`App is listening on port ${port}`);
 });

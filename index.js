@@ -24,6 +24,15 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(cookieParser());
+app.use((req, res, next) => {
+  console.log("REQ METHOD:", req.method);
+  console.log("REQ URL:", req.url);
+  console.log("REQ HEADERS:", req.headers);
+  console.log("REQ COOKIES:", req.cookies);   // якщо використовуєш cookie-parser
+  console.log("REQ BODY:", req.body);
+  console.log("REQ USER:", req.user);        // тут твоя авторизація через middleware
+  next();
+});
 
 // ---------- Supabase server client (service role) ----------
 const SUPABASE_URL = process.env.SUPABASE_URL;
